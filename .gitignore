@@ -1,0 +1,10 @@
+.idea
+.vscode
+.cache
+.venv
+
+build
+install
+log
+cmake-build-*
+compile_commands.json
