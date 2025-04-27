@@ -12,12 +12,18 @@ find_package(ament_cmake REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 add_executable(kuka_rsi_system src/kuka_rsi_system.cpp)
+add_executable(kalman_filter src/kalman_filter.cpp)
 target_include_directories(kuka_rsi_system PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_compile_features(kuka_rsi_system PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_include_directories(kalman_filter PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 
-install(TARGETS kuka_rsi_system
+target_compile_features(kuka_rsi_system PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(kalman_filter PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+
+install(TARGETS kuka_rsi_system kalman_filter
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
