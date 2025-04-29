@@ -12,5 +12,5 @@
 
 [submodule "src/modbus_slave/lib/modbus_tcp_cpp"]
 	path = src/modbus_slave/lib/modbus_tcp_cpp
-	url = git@github.com:jonakselm/modbus_tcp_cpp
+	url = https://github.com/jonakselm/modbus_tcp_cpp.git
 
