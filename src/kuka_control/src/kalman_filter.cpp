@@ -62,3 +62,9 @@ Eigen::Vector3d KalmanFilter::predictFuture(double dt) const
     pred.z() = p.z() + v.z()*dt - 0.5*9.81*dt*dt;
     return pred;
 }
+
+void KalmanFilter::reset()
+{
+    x_.setZero();
+    P_.setIdentity();
+}

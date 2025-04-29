@@ -20,12 +20,12 @@ private:
     void timerCallback()
     {
         geometry_msgs::msg::Point p;
-        p.x = 10 - 7.0 * t_;                    // ≈10 m over the 1.4 s fall
+        p.x = 30.0 - 21.0 * t_;                    // ≈10 m over the 1.4 s fall
         p.y = 0.3 * std::cos(0.5 * t_);    // small sideways wave
         p.z = 10.0 - 0.5 * 9.81 * t_ * t_; // free fall from 10 m
 
         // restart when the ball hits the floor
-        if (p.z <= 0.0)
+        if (p.z <= -10.0)
         {
             t_ = 0.0;
             p.z = 10.0; // reset height immediately

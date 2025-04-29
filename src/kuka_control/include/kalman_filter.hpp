@@ -10,6 +10,7 @@ public:
 
     void predict(double dt);
     void update(const Eigen::Vector3d& z);
+    void reset();
 
     Eigen::Vector3d position() const { return x_.head<3>(); }
     Eigen::Vector3d velocity() const { return x_.tail<3>(); }

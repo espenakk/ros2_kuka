@@ -49,6 +49,7 @@ Visualization Manager:
       Name: BallTrajectory
       Namespaces:
         ball: true
+        predictions: true
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -102,25 +103,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 6.1250319480896
+      Distance: 10.794400215148926
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0
-        Y: 0
-        Z: 0
+        X: 0.1109938994050026
+        Y: 0.019838223233819008
+        Z: 0.687920868396759
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.1953984797000885
+      Pitch: 0.11039850115776062
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 1.575397253036499
+      Yaw: 2.4903969764709473
     Saved: ~
 Window Geometry:
   Displays:
