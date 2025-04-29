@@ -5,7 +5,7 @@ class TestBallPublisher : public rclcpp::Node
 {
 public:
     TestBallPublisher()
-    : Node("test_ball_publisher"), t_(0.0)
+        : Node("test_ball_publisher"), t_(0.0)
     {
         pub_ = create_publisher<geometry_msgs::msg::Point>("/ball/position", 10);
         timer_ = create_wall_timer(std::chrono::milliseconds(50), std::bind(&TestBallPublisher::timerCallback, this));
@@ -15,9 +15,15 @@ private:
     void timerCallback()
     {
         geometry_msgs::msg::Point msg;
-        msg.x = 0.5 * t_;          // move slowly in x
-        msg.y = 0.0;               // no y movement
-        msg.z = 5.0 - 0.5 * 9.81 * t_ * t_; // fall under gravity
+        msg.x = 0.5 * t_;
+        msg.y = 0.0;
+        msg.z = 5.0 - 0.1 * 9.81 * t_ * t_;
+
+        if (msg.z < 0.0)
+        {
+            msg.z = 0.0; // Clamp to floor
+            t_ = 0.0;    // Restart
+        }
 
         pub_->publish(msg);
 
