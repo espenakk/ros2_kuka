@@ -18,6 +18,7 @@ private:
     void ballCallback(const geometry_msgs::msg::Point::SharedPtr msg);
     rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr ball_sub_;
     rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr pred_pub_;
+    rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr ground_pub_;
 
     KalmanFilter kf_;
     bool is_initialized_;

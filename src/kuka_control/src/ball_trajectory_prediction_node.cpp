@@ -7,6 +7,7 @@ BallTrajectoryPredictionNode::BallTrajectoryPredictionNode()
       "/ball/position", 10, std::bind(&BallTrajectoryPredictionNode::ballCallback, this, std::placeholders::_1));
 
   pred_pub_ = this->create_publisher<geometry_msgs::msg::Point>("/ball/predicted_position", 10);
+  ground_pub_ = this->create_publisher<geometry_msgs::msg::Point>("/ball/ground_hit", 10);
 
   clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
   last_time_ = clock_->now();
@@ -38,6 +39,8 @@ void BallTrajectoryPredictionNode::ballCallback(
     return; // wait for next sample to seed v₀
   }
 
+  visualization_msgs::msg::MarkerArray arr;
+
   /* ── initialisation (need two samples for v0) ──────────────────────────── */
   if (!is_initialized_)
   {
@@ -64,10 +67,55 @@ void BallTrajectoryPredictionNode::ballCallback(
     out.y = pred.y();
     out.z = pred.z();
     pred_pub_->publish(out);
+    /* ---------- predict ground-impact point ----------------------------- */
+    const double g = 9.81;
+    Eigen::Vector3d pos = kf_.position();
+    Eigen::Vector3d vel = kf_.velocity();
+
+    /* solve ½ g t² − v_z t − z = 0  (we keep positive root) */
+    double a = 0.5 * g;
+    double b = -vel.z();
+    double c = -pos.z(); // ground is z=0
+    double disc = b * b - 4 * a * c;
+
+    bool hit_valid = disc >= 0.0 && a > 0.0;
+    double t_hit = (-b + std::sqrt(disc)) / (2 * a); // positive root
+
+    if (hit_valid && t_hit > 0.0 && t_hit < 5.0) // ignore absurd hits
+    {
+      Eigen::Vector3d hit;
+      hit.x() = pos.x() + vel.x() * t_hit;
+      hit.y() = pos.y() + vel.y() * t_hit;
+      hit.z() = 0.0;
+
+      /* publish on /ball/ground_hit */
+      geometry_msgs::msg::Point p;
+      p.x = hit.x();
+      p.y = hit.y();
+      p.z = hit.z();
+      ground_pub_->publish(p);
+
+      /* add RViz marker */
+      visualization_msgs::msg::Marker m;
+      m.header.frame_id = "world";
+      m.header.stamp = now;
+      m.ns = "ground";
+      m.id = 999;
+      m.type = visualization_msgs::msg::Marker::SPHERE;
+      m.action = visualization_msgs::msg::Marker::ADD;
+      m.pose.position.x = hit.x();
+      m.pose.position.y = hit.y();
+      m.pose.position.z = hit.z();
+      m.scale.x = m.scale.y = m.scale.z = 0.12; // larger sphere
+      m.color.a = 1.0;
+      m.color.r = 0.0;
+      m.color.g = 0.5;
+      m.color.b = 1.0;
+      arr.markers.push_back(m);
+    }
   }
 
   /* ── RViz markers -------------------------------------------------------- */
-  visualization_msgs::msg::MarkerArray arr;
 
   // green ball (measurement)
   visualization_msgs::msg::Marker ball;
