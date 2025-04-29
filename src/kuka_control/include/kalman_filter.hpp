@@ -7,7 +7,7 @@ class KalmanFilter
 public:
     KalmanFilter();
 
-    void init(const Eigen::Vector3d& initial_position, double dt);
+    void init(const Eigen::Vector3d& initial_position);
 
     void predict(double dt);
     void update(const Eigen::Vector3d& measurement);

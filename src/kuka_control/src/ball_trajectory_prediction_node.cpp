@@ -24,7 +24,7 @@ void BallTrajectoryPredictionNode::ballCallback(const geometry_msgs::msg::Point:
 
   if (!is_initialized_)
   {
-    kf_.init(measurement, dt);
+    kf_.init(measurement);
     is_initialized_ = true;
   }
   else
@@ -68,20 +68,7 @@ void BallTrajectoryPredictionNode::ballCallback(const geometry_msgs::msg::Point:
   marker_array.markers.push_back(ball_marker);
 
   // Markers for future predicted points
-  std::vector<double> future_times = {0.2, 0.4, 0.6, 0.8, 1.0}; // prediction times
-  visualization_msgs::msg::Marker trajectory_line;
-
-  trajectory_line.header.frame_id = "world";
-  trajectory_line.header.stamp = now;
-  trajectory_line.ns = "trajectory_line";
-  trajectory_line.id = 100;
-  trajectory_line.type = visualization_msgs::msg::Marker::LINE_STRIP;
-  trajectory_line.action = visualization_msgs::msg::Marker::ADD;
-  trajectory_line.scale.x = 0.02; // Line thickness
-  trajectory_line.color.a = 1.0;
-  trajectory_line.color.r = 1.0;
-  trajectory_line.color.g = 1.0;
-  trajectory_line.color.b = 0.0;
+  std::vector<double> future_times = {0.05, 0.1, 0.15, 0.2, 0.25}; // prediction times
 
   // Predicted points
   int id = 1;
@@ -109,6 +96,7 @@ void BallTrajectoryPredictionNode::ballCallback(const geometry_msgs::msg::Point:
     pred_marker.color.a = 1.0;
     pred_marker.color.r = t_ratio;
     pred_marker.color.g = 1.0 - t_ratio;
+    marker_array.markers.push_back(pred_marker);
   }
   marker_pub_->publish(marker_array);
 }

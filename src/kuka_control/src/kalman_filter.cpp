@@ -11,7 +11,7 @@ KalmanFilter::KalmanFilter()
     R_ = Eigen::MatrixXd::Identity(3, 3) * 0.05;
 }
 
-void KalmanFilter::init(const Eigen::Vector3d& initial_position, double dt)
+void KalmanFilter::init(const Eigen::Vector3d& initial_position)
 {
     x_.head<3>() = initial_position;
     x_.tail<3>() = Eigen::Vector3d::Zero(); // Assume zero initial velocity
