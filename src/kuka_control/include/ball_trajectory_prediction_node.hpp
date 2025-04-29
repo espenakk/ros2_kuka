@@ -4,6 +4,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
 
 class BallTrajectoryPredictionNode : public rclcpp::Node
 {
@@ -19,5 +22,6 @@ private:
     bool is_initialized_;
     rclcpp::Clock::SharedPtr clock_;
     rclcpp::Time last_time_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 
 };
