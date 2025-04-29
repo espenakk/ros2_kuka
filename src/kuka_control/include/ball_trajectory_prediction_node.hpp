@@ -6,6 +6,7 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <optional>
 
 
 class BallTrajectoryPredictionNode : public rclcpp::Node
@@ -23,5 +24,5 @@ private:
     rclcpp::Clock::SharedPtr clock_;
     rclcpp::Time last_time_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-
+    std::optional<Eigen::Vector3d> prev_meas_;   // previous measurement
 };

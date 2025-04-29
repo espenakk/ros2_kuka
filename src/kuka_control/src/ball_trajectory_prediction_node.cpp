@@ -13,93 +13,93 @@ BallTrajectoryPredictionNode::BallTrajectoryPredictionNode()
   marker_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>("ball_prediction_markers", 10);
 }
 
-void BallTrajectoryPredictionNode::ballCallback(const geometry_msgs::msg::Point::SharedPtr msg)
+void BallTrajectoryPredictionNode::ballCallback(
+  const geometry_msgs::msg::Point::SharedPtr msg)
 {
-  rclcpp::Time now = clock_->now();
-  double dt = (now - last_time_).seconds();
-  if (dt == 0.0)
-    dt = 0.01; // fallback to small dt
+/* ── time step ─────────────────────────────────────────────────────────── */
+rclcpp::Time now = clock_->now();
+double dt = (now - last_time_).seconds();
+if (dt <= 0.0) dt = 0.01;
 
-  Eigen::Vector3d measurement(msg->x, msg->y, msg->z);
+/* measurement as Eigen --------------------------------------------------- */
+Eigen::Vector3d z(msg->x, msg->y, msg->z);
 
-  if (!is_initialized_)
-  {
-    kf_.init(measurement);
-    is_initialized_ = true;
+/* ── initialisation (need two samples for v0) ──────────────────────────── */
+if (!is_initialized_)
+{
+  if (!prev_meas_) {               // first sample → store & wait
+    prev_meas_ = z;
+    last_time_ = now;
+    return;
   }
-  else
-  {
-    kf_.predict(dt);
-    kf_.update(measurement);
-
-    // Predict 0.5s ahead
-    Eigen::Vector3d pred = kf_.predictFuturePosition(0.5);
-
-    geometry_msgs::msg::Point pred_msg;
-    pred_msg.x = pred.x();
-    pred_msg.y = pred.y();
-    pred_msg.z = pred.z();
-    pred_pub_->publish(pred_msg);
-  }
-
-  last_time_ = now;
-
-  visualization_msgs::msg::MarkerArray marker_array;
-
-  // Marker for current ball position
-  visualization_msgs::msg::Marker ball_marker;
-  ball_marker.header.frame_id = "world"; // <-- Make sure your RViz Fixed Frame matches
-  ball_marker.header.stamp = now;
-  ball_marker.ns = "ball";
-  ball_marker.id = 0;
-  ball_marker.type = visualization_msgs::msg::Marker::SPHERE;
-  ball_marker.action = visualization_msgs::msg::Marker::ADD;
-  ball_marker.pose.position.x = measurement.x();
-  ball_marker.pose.position.y = measurement.y();
-  ball_marker.pose.position.z = measurement.z();
-  ball_marker.scale.x = 0.1;
-  ball_marker.scale.y = 0.1;
-  ball_marker.scale.z = 0.1;
-  ball_marker.color.a = 1.0;
-  ball_marker.color.r = 0.0;
-  ball_marker.color.g = 1.0;
-  ball_marker.color.b = 0.0;
-
-  marker_array.markers.push_back(ball_marker);
-
-  // Markers for future predicted points
-  std::vector<double> future_times = {0.05, 0.1, 0.15, 0.2, 0.25}; // prediction times
-
-  // Predicted points
-  int id = 1;
-  for (size_t i = 0; i < future_times.size(); ++i)
-  {
-    double t_future = future_times[i];
-    Eigen::Vector3d pred_point = kf_.predictFuturePosition(t_future);
-
-    visualization_msgs::msg::Marker pred_marker;
-    pred_marker.header.frame_id = "world";
-    pred_marker.header.stamp = now;
-    pred_marker.ns = "predictions";
-    pred_marker.id = id++;
-    pred_marker.type = visualization_msgs::msg::Marker::SPHERE;
-    pred_marker.action = visualization_msgs::msg::Marker::ADD;
-    pred_marker.pose.position.x = pred_point.x();
-    pred_marker.pose.position.y = pred_point.y();
-    pred_marker.pose.position.z = pred_point.z();
-    pred_marker.scale.x = 0.05;
-    pred_marker.scale.y = 0.05;
-    pred_marker.scale.z = 0.05;
-
-    // Color: early points green, late points red
-    double t_ratio = static_cast<double>(i) / static_cast<double>(future_times.size());
-    pred_marker.color.a = 1.0;
-    pred_marker.color.r = t_ratio;
-    pred_marker.color.g = 1.0 - t_ratio;
-    marker_array.markers.push_back(pred_marker);
-  }
-  marker_pub_->publish(marker_array);
+  Eigen::Vector3d v0 = (z - *prev_meas_) / dt;
+  kf_.init(z, v0);                 // init with position + velocity guess
+  is_initialized_ = true;
 }
+else
+{
+  /* ── normal Kalman loop ──────────────────────────────────────────────── */
+  kf_.predict(dt);
+  kf_.update(z);
+
+  // 0.5 s-ahead point for external use
+  Eigen::Vector3d pred = kf_.predictFuture(0.5);
+  geometry_msgs::msg::Point out;
+  out.x = pred.x();  out.y = pred.y();  out.z = pred.z();
+  pred_pub_->publish(out);
+}
+
+/* ── RViz markers -------------------------------------------------------- */
+visualization_msgs::msg::MarkerArray arr;
+
+// green ball (measurement)
+visualization_msgs::msg::Marker ball;
+ball.header.frame_id = "world";
+ball.header.stamp    = now;
+ball.ns = "ball";  ball.id = 0;
+ball.type = visualization_msgs::msg::Marker::SPHERE;
+ball.action = visualization_msgs::msg::Marker::ADD;
+ball.pose.position.x = z.x();
+ball.pose.position.y = z.y();
+ball.pose.position.z = z.z();
+ball.scale.x = ball.scale.y = ball.scale.z = 0.10;
+ball.color.a = 1.0;  ball.color.r = 0.0;  ball.color.g = 1.0;  ball.color.b = 0.0;
+arr.markers.push_back(ball);
+
+// future prediction spheres
+std::vector<double> future{0.05,0.10,0.15,0.20,0.25};
+int id = 1;
+for (size_t i = 0; i < future.size(); ++i)
+{
+  Eigen::Vector3d p = kf_.predictFuture(future[i]);
+
+  visualization_msgs::msg::Marker m;
+  m.header.frame_id = "world";
+  m.header.stamp    = now;
+  m.ns  = "predictions";
+  m.id  = id++;
+  m.type = visualization_msgs::msg::Marker::SPHERE;
+  m.action = visualization_msgs::msg::Marker::ADD;
+  m.pose.position.x = p.x();
+  m.pose.position.y = p.y();
+  m.pose.position.z = p.z();
+  m.scale.x = m.scale.y = m.scale.z = 0.05;
+
+  double ratio = static_cast<double>(i) / future.size();
+  m.color.a = 1.0;
+  m.color.r = ratio;
+  m.color.g = 1.0 - ratio;
+  m.color.b = 0.0;
+
+  arr.markers.push_back(m);
+}
+marker_pub_->publish(arr);
+
+/* ── bookkeeping --------------------------------------------------------- */
+prev_meas_ = z;
+last_time_ = now;
+}
+
 
 int main(int argc, char **argv)
 {
