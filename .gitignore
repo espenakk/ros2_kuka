@@ -8,3 +8,5 @@ install
 log
 cmake-build-*
 compile_commands.json
+
+.catkin*
