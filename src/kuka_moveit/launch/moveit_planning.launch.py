@@ -28,6 +28,8 @@ def launch_setup(context, *args, **kwargs):
     robot_model = LaunchConfiguration("robot_model")
     robot_family = LaunchConfiguration("robot_family")
 
+    moveit_config_dir = get_package_share_directory("kuka_kr_moveit_config")
+
     moveit_config = (
         MoveItConfigsBuilder("kuka_kr")
         .robot_description(
@@ -35,11 +37,10 @@ def launch_setup(context, *args, **kwargs):
             + f"/urdf/{robot_model.perform(context)}.urdf.xacro"
         )
         .robot_description_semantic(
-            get_package_share_directory("kuka_kr_moveit_config")
-            + f"/urdf/{robot_model.perform(context)}_arm.srdf"
+            f"{moveit_config_dir}/urdf/{robot_model.perform(context)}_arm.srdf"
         )
-        .robot_description_kinematics(file_path="config/kinematics.yaml")
-        .trajectory_execution(file_path="config/moveit_controllers.yaml")
+        .robot_description_kinematics(file_path=f"{moveit_config_dir}/config/kinematics.yaml")
+        .trajectory_execution(file_path=f"{moveit_config_dir}/config/moveit_controllers.yaml")
         .planning_scene_monitor(
             publish_robot_description=True, publish_robot_description_semantic=True
         )

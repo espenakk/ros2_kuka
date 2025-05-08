@@ -13,11 +13,23 @@ def launch_setup(context, *args, **kwargs):
     robot_family = LaunchConfiguration("robot_family")
     simulation = LaunchConfiguration("simulation")
 
-    kuka_driver_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("kuka_agilus_support"), "launch", f"test_{robot_model.perform(context)}.launch.py")
-        )
+    robot_description_content = Command(
+        [
+            PathJoinSubstitution([FindExecutable(name="xacro")]),
+            " ",
+            PathJoinSubstitution(
+                [
+                    FindPackageShare(f"kuka_{robot_family.perform(context)}_support"),
+                    "urdf",
+                    f"{robot_model.perform(context)}.urdf.xacro",
+                ]
+            ),
+            " ",
+            "use_fake_hardware:=",
+            simulation.perform(context),
+        ]
     )
+
 
     moveit_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -37,14 +49,49 @@ def launch_setup(context, *args, **kwargs):
         launch_arguments={
             "robot_model": robot_model,
             "robot_family": robot_family,
-            "simulation": simulation
+            "robot_description": robot_description_content
+        }.items()
+    )
+
+    #rviz_config_file = (
+    #    os.path.join(get_package_share_directory("kuka_resources"), "config", "planning_6_axis.rviz"
+    #)
+    rviz_config_file = (
+        os.path.join(get_package_share_directory("kuka_bringup"), "config", "config.rviz")
+    )
+    rviz_node = Node(
+        package="rviz2",
+        executable="rviz2",
+        name="rviz2_launch",
+        output="log",
+        arguments=["-d", rviz_config_file],
+        parameters=[{"robot_description" : robot_description_content}],
+    )
+
+    # Publish TF
+    robot_state_publisher = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name="robot_state_publisher",
+        output="both",
+        parameters=[{"robot_description" : robot_description_content}],
+    )
+
+    prediction_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(get_package_share_directory("kuka_control"), "launch", "ball_trajectory_prediction.launch.py")
+        ),
+        launch_arguments={
+            "test_mode": simulation,
         }.items()
     )
 
     nodes_to_start = [
         moveit_launch,
-        kuka_driver_launch,
-        hardware_launch
+        hardware_launch,
+        robot_state_publisher,
+        rviz_node,
+        prediction_launch
     ]
     return nodes_to_start
 

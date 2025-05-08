@@ -11,26 +11,8 @@ import xacro
 def launch_setup(context, *args, **kwargs):
     robot_model = LaunchConfiguration("robot_model")
     robot_family = LaunchConfiguration("robot_family")
-    simulation = LaunchConfiguration("simulation")
+    robot_description = LaunchConfiguration("robot_description")
 
-    robot_description_content = Command(
-        [
-            PathJoinSubstitution([FindExecutable(name="xacro")]),
-            " ",
-            PathJoinSubstitution(
-                [
-                    FindPackageShare(f"kuka_{robot_family.perform(context)}_support"),
-                    "urdf",
-                    f"{robot_model.perform(context)}.urdf.xacro",
-                ]
-            ),
-            " ",
-            "use_fake_hardware:=",
-            simulation.perform(context),
-        ]
-    )
-
-    robot_description = {"robot_description": robot_description_content}
 
     controller_config = (
         get_package_share_directory("kuka_resources")
@@ -71,5 +53,5 @@ def generate_launch_description():
     launch_args = []
     launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r700_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
-    launch_args.append(DeclareLaunchArgument("simulation", default_value="true"))
+    launch_args.append(DeclareLaunchArgument("robot_description", default_value="true"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])
