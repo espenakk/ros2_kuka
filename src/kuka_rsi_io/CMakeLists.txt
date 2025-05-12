@@ -25,3 +25,14 @@ target_include_directories(kuka_rsi_io PUBLIC include/ PRIVATE src/)
 
 add_executable(demo demo/main.cpp)
 target_link_libraries(demo kuka_rsi_io)
+
+# Install library and headers
+install(TARGETS kuka_rsi_io
+  EXPORT kuka_rsi_ioTargets
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+install(DIRECTORY include/ DESTINATION include)
+
+install(TARGETS demo RUNTIME DESTINATION bin)
