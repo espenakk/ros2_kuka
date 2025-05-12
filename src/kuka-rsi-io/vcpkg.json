@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "kuka-rsi-io",
+  "dependencies": [
+    "asio",
+    "eigen3",
+    "spdlog",
+    "pugixml"
+  ]
+}
