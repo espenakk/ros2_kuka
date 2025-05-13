@@ -46,6 +46,6 @@ def generate_launch_description():
         test_mode_arg,
         ball_trajectory_prediction_node,
         test_ball_publisher_node,
-        #rviz_node
+        rviz_node
     ])
 

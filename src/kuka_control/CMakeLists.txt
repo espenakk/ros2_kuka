@@ -25,7 +25,7 @@ ament_target_dependencies(test_ball_publisher_node rclcpp geometry_msgs)
 target_include_directories(ball_trajectory_prediction_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
-target_compile_features(ball_trajectory_prediction_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(ball_trajectory_prediction_node PUBLIC c_std_99 cxx_std_17)
 
 target_include_directories(test_ball_publisher_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -43,19 +43,11 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/
 )
 
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
 
 ament_package()
-
-
