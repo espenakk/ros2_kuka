@@ -3,23 +3,5 @@
     "kind": "git",
     "repository": "https://github.com/Microsoft/vcpkg",
     "baseline": "d558a1b4afd52e2659d7d2b6783cb2eb11add926"
-  },
-  "registries": [
-    {
-      "kind": "git",
-      "baseline": "96bea4df9f430384361a70e1c2e2e63882eb69ed",
-      "repository": "https://github.com/Ecos-platform/vcpkg-registry",
-      "packages": [ "threepp" ]
-    },
-    {
-      "kind": "git",
-      "baseline": "4b23cef7a06dcf55f9a51087017a1007c42e40c8",
-      "repository": "https://github.com/skrede/vcpkg",
-      "packages": [
-        "boost-threadpool",
-        "eprosima-fastdds",
-        "eprosima-fastrpc"
-      ]
-    }
-  ]
+  }
 }

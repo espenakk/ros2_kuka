@@ -1,9 +1,9 @@
-#ifndef SKREDE_RSI_SPINLOCK_H
-#define SKREDE_RSI_SPINLOCK_H
+#ifndef RSI_SPINLOCK_H
+#define RSI_SPINLOCK_H
 
 #include <atomic>
 
-namespace skrede::rsi {
+namespace rsi {
 
 class Spinlock
 {

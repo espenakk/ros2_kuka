@@ -1,5 +1,5 @@
-#ifndef SKREDE_RSI_UDPSERVER_H
-#define SKREDE_RSI_UDPSERVER_H
+#ifndef RSI_UDPSERVER_H
+#define RSI_UDPSERVER_H
 
 #include <string>
 #include <thread>
@@ -9,7 +9,7 @@
 
 #include <asio/ip/udp.hpp>
 
-namespace skrede::rsi {
+namespace rsi {
 
 class UDPServer
 {

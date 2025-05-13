@@ -1,5 +1,5 @@
-#ifndef SKREDE_RSI_KUKARSIXMLSERIALIZER_H
-#define SKREDE_RSI_KUKARSIXMLSERIALIZER_H
+#ifndef RSI_KUKARSIXMLSERIALIZER_H
+#define RSI_KUKARSIXMLSERIALIZER_H
 
 #include <Eigen/Dense>
 
@@ -8,7 +8,7 @@
 #define DEG2RAD 0.01745329252
 #define RAD2DEG 57.295779513
 
-namespace skrede::rsi {
+namespace rsi {
 
 struct KukaRsiState
 {

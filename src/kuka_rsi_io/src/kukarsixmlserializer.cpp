@@ -1,8 +1,8 @@
-#include "skrede/rsi/kukarsixmlserializer.h"
+#include "rsi/kukarsixmlserializer.h"
 
 #include <sstream>
 
-using namespace skrede::rsi;
+using namespace rsi;
 
 KukaRsiXmlSerializer::KukaRsiXmlSerializer(size_t joint_count)
     : m_joint_count(joint_count)

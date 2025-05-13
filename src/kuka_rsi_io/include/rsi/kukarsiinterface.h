@@ -1,14 +1,14 @@
-#ifndef SKREDE_RSI_KUKARSIINTERFACE_H
-#define SKREDE_RSI_KUKARSIINTERFACE_H
+#ifndef RSI_KUKARSIINTERFACE_H
+#define RSI_KUKARSIINTERFACE_H
 
-#include "skrede/rsi/spinlock.h"
-#include "skrede/rsi/udpserver.h"
-#include "skrede/rsi/kukarsixmlserializer.h"
+#include "rsi/spinlock.h"
+#include "rsi/udpserver.h"
+#include "rsi/kukarsixmlserializer.h"
 
 #include <mutex>
 #include <atomic>
 
-namespace skrede::rsi {
+namespace rsi {
 
 class KukaRsiInterface
 {

@@ -1,4 +1,4 @@
-#include "skrede/rsi/kukarsiinterface.h"
+#include "rsi/kukarsiinterface.h"
 
 #include <spdlog/spdlog.h>
 
@@ -7,7 +7,7 @@ int main()
     Eigen::ArrayXd home_position_deg(6u);
     home_position_deg << 0.0, 0.0, -90.0, 90.0, 0.0, 0.0;
 
-    skrede::rsi::KukaRsiInterface iface("192.168.1.50", 49153, 6u, [](const Eigen::ArrayXd &joint_positions_rad)
+    rsi::KukaRsiInterface iface("192.168.1.50", 49153, 6u, [](const Eigen::ArrayXd &joint_positions_rad)
     {
         std::stringstream ss;
         ss << "Received joint positions: " << joint_positions_rad.transpose() << std::endl;

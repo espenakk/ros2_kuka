@@ -1,10 +1,10 @@
-#include "skrede/rsi/kukarsiinterface.h"
+#include "rsi/kukarsiinterface.h"
 
 #include <iostream>
 
 #include <spdlog/spdlog.h>
 
-using namespace skrede::rsi;
+using namespace rsi;
 
 KukaRsiInterface::KukaRsiInterface(const std::string &rsi_host, uint16_t rsi_port, size_t joint_count, std::function<void(const Eigen::ArrayXd &)> joint_pos_recv_callback)
     : m_ipoc(0u)

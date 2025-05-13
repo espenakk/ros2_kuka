@@ -1,8 +1,8 @@
-#include "skrede/rsi/udpserver.h"
+#include "rsi/udpserver.h"
 
 #include <spdlog/spdlog.h>
 
-using namespace skrede::rsi;
+using namespace rsi;
 
 UDPServer::UDPServer(std::function<void(const std::string &, uint16_t, void *, size_t)> receiver, std::function<void(bool)> socket_open_listener, uint32_t buffer_size)
     : m_buffer_size(buffer_size)

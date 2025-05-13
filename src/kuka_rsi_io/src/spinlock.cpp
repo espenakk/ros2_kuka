@@ -1,6 +1,6 @@
-#include "skrede/rsi/spinlock.h"
+#include "rsi/spinlock.h"
 
-using namespace skrede::rsi;
+using namespace rsi;
 
 Spinlock::Spinlock()
     : m_lock{}
