@@ -4,7 +4,10 @@ project(kuka_rsi_io)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Dependencies
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
 find_package(asio CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
@@ -12,20 +15,16 @@ find_package(pugixml CONFIG REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
-find_package(hardware_interface REQUIRED)
 
-# Library
 add_library(kuka_rsi_io
   src/spinlock.cpp
   src/udpserver.cpp
   src/kukarsiinterface.cpp
   src/kukarsixmlserializer.cpp
-  src/kuka_interface_plugin.cpp
   include/rsi/spinlock.h
   include/rsi/udpserver.h
   include/rsi/kukarsiinterface.h
   include/rsi/kukarsixmlserializer.h
-  include/kuka_interface_plugin.hpp
 )
 
 target_link_libraries(kuka_rsi_io
@@ -38,7 +37,6 @@ target_link_libraries(kuka_rsi_io
 
 ament_target_dependencies(kuka_rsi_io PUBLIC
   rclcpp
-  hardware_interface
 )
 
 target_include_directories(kuka_rsi_io
@@ -78,18 +76,5 @@ install(TARGETS kuka_rsi_io
 install(DIRECTORY include/ DESTINATION include)
 install(TARGETS demo RUNTIME DESTINATION bin)
 install(TARGETS demo_node DESTINATION lib/${PROJECT_NAME})
-
-# Compiler warnings
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
-
-# Testing and linting
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  set(ament_cmake_copyright_FOUND TRUE)
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
 
 ament_package()

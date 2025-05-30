@@ -66,7 +66,7 @@ DECL INT CONTID	; ContainerID
 ;ENDFOLD (INI)
 
 ; Move to start position
-PTP {A1 0, A2 -90, A3 90, A4 0, A5 90, A6 0}
+PTP {A1 0, A2 -90, A3 90, A4 0, A5 0, A6 0}
 
 ; Create RSI Context 
 ret = RSI_CREATE("ros_rsi.rsi",CONTID,TRUE)
@@ -89,6 +89,6 @@ IF (ret <> RSIOK) THEN
   HALT
 ENDIF
 
-PTP {A1 0, A2 -90, A3 90, A4 0, A5 90, A6 0}
+PTP {A1 0, A2 -90, A3 90, A4 0, A5 0, A6 0}
 
 END
