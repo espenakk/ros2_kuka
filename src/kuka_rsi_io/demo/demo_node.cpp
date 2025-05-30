@@ -49,10 +49,14 @@ private:
             RCLCPP_WARN(this->get_logger(), "Expected 6 joint positions, got %zu", msg->data.size());
             return;
         }
-        Eigen::ArrayXd setpoints(6);
-        for (size_t i = 0; i < 6; ++i)
-            setpoints[i] = msg->data[i];
-        iface_.setJointPositionsRad(setpoints);
+        // Eigen::ArrayXd setpoints(6);
+        // for (size_t i = 0; i < 6; ++i)
+        //     setpoints[i] = msg->data[i];
+        // iface_.setJointPositionsRad(setpoints);
+        Eigen::ArrayXd home_position_deg(6u);
+        home_position_deg << 0.0, 0.0, -90.0, 45.0, 0.0, 0.0;
+        iface_.setJointPositionsRad(home_position_deg * DEG2RAD);
+
     }
 
     rsi::KukaRsiInterface iface_;
