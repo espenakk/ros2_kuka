@@ -14,3 +14,6 @@
 	path = src/modbus_slave/lib/modbus_tcp_cpp
 	url = https://github.com/jonakselm/modbus_tcp_cpp.git
 
+[submodule "src/trac_ik"]
+	path = src/trac_ik
+	url = https://bitbucket.org/traclabs/trac_ik/src/rolling/
