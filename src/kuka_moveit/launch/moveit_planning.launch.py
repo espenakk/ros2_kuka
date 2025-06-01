@@ -29,6 +29,7 @@ def launch_setup(context, *args, **kwargs):
     robot_family = LaunchConfiguration("robot_family")
 
     moveit_config_dir = get_package_share_directory("kuka_kr_moveit_config")
+    curr_dir = get_package_share_directory("kuka_moveit")
 
     moveit_config = (
         MoveItConfigsBuilder("kuka_kr")
@@ -40,7 +41,7 @@ def launch_setup(context, *args, **kwargs):
             f"{moveit_config_dir}/urdf/{robot_model.perform(context)}_arm.srdf"
         )
         .robot_description_kinematics(file_path=f"{moveit_config_dir}/config/kinematics.yaml")
-        .trajectory_execution(file_path=f"{moveit_config_dir}/config/moveit_controllers.yaml")
+        .trajectory_execution(file_path=f"{curr_dir}/config/moveit_controllers.yaml")
         .planning_scene_monitor(
             publish_robot_description=True, publish_robot_description_semantic=True
         )
@@ -58,13 +59,36 @@ def launch_setup(context, *args, **kwargs):
         parameters=[moveit_config.to_dict()],
     )
 
-    to_start = [move_group_server]
+    point_to_legal_pose_node = Node(
+        package="kuka_moveit",
+        executable="point_to_legal_pose_node",
+        output="screen",
+    )
+
+    trajectory_planning_node = Node(
+        package="kuka_moveit",
+        executable="trajectory_planning_node",
+        output="screen",
+    )
+
+    plan_execution_node = Node(
+        package="kuka_moveit",
+        executable="plan_execution_node",
+        output="screen",
+    )
+
+    to_start = [
+        move_group_server,
+        point_to_legal_pose_node,
+        trajectory_planning_node,
+        plan_execution_node
+    ]
 
     return to_start
 
 
 def generate_launch_description():
     launch_arguments = []
-    launch_arguments.append(DeclareLaunchArgument("robot_model", default_value="kr6_r700_sixx"))
+    launch_arguments.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_arguments.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
     return LaunchDescription(launch_arguments + [OpaqueFunction(function=launch_setup)])

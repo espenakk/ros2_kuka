@@ -53,9 +53,11 @@ def launch_setup(context, *args, **kwargs):
         }.items()
     )
 
-    #rviz_config_file = (
-    #    os.path.join(get_package_share_directory("kuka_resources"), "config", "planning_6_axis.rviz"
-    #)
+    robot_description_kinematics = {
+        "robot_description_kinematics": {
+            "manipulator": {"kinematics_solver": "kdl_kinematics_plugin/KDLKinematicsPlugin"}
+        }
+    }
     rviz_config_file = (
         os.path.join(get_package_share_directory("kuka_bringup"), "config", "config.rviz")
     )
@@ -65,7 +67,9 @@ def launch_setup(context, *args, **kwargs):
         name="rviz2_launch",
         output="log",
         arguments=["-d", rviz_config_file],
-        parameters=[{"robot_description" : robot_description_content}],
+        parameters=[
+            robot_description_kinematics,
+        ],
     )
 
     # Publish TF
@@ -74,7 +78,8 @@ def launch_setup(context, *args, **kwargs):
         executable="robot_state_publisher",
         name="robot_state_publisher",
         output="both",
-        parameters=[{"robot_description" : robot_description_content}],
+        parameters=[{"robot_description" : robot_description_content},
+                    {"use_sim_time": simulation}],
     )
 
     prediction_launch = IncludeLaunchDescription(
@@ -97,7 +102,7 @@ def launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     launch_args = []
-    launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r700_sixx"))
+    launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
     launch_args.append(DeclareLaunchArgument("simulation", default_value="true"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])

@@ -15,7 +15,7 @@ def launch_setup(context, *args, **kwargs):
 
 
     controller_config = (
-        get_package_share_directory("kuka_resources")
+        get_package_share_directory("kuka_hardware")
         + f"/config/fake_hardware_config_6_axis.yaml"
     )
 
@@ -51,7 +51,7 @@ def launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     launch_args = []
-    launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r700_sixx"))
+    launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
     launch_args.append(DeclareLaunchArgument("robot_description", default_value="true"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])
