@@ -10,9 +10,10 @@ int main()
 
     rsi::KukaRsiInterface iface("192.168.1.50", 49153, 6u, [&](const Eigen::ArrayXd &joint_positions_rad)
     {
-        std::stringstream ss;
-        ss << "Received joint positions: " << joint_positions_rad.transpose() << std::endl;
-        spdlog::info(ss.str());
+        // Debug
+        // std::stringstream ss;
+        // ss << "Received joint positions: " << joint_positions_rad.transpose() << std::endl;
+        // spdlog::info(ss.str());
         hasR = true;
         // Create a ROS publisher here for the joint positions.
         // !!!!!! Be very mindful of conventions for degrees and radians !!!!!!
@@ -33,7 +34,7 @@ int main()
     double current_increment = 0.0;
     const double max_increment = 0.1; // Max speed/increment per cycle
     const double acceleration_step = 0.0006; // How much to change speed per cycle
-    const double limit_deg = 30.0; // Target +/- limit for 'a'
+    const double limit_deg = 35.0; // Target +/- limit for 'a'
 
     // Calculate the distance needed to decelerate from max_increment to 0
     // Formula: distance = max_speed^2 / (2 * acceleration_rate)
@@ -71,12 +72,12 @@ int main()
                 bool needs_to_decelerate = false;
                 if (fwd) { // Moving towards positive limit
                     // Start decelerating if 'a' is within the deceleration distance from the positive limit
-                    if (a >= limit_deg - deceleration_distance_needed) {
+                    if (a >= limit_deg - (deceleration_distance_needed * 1.5)) { // Start decelerating earlier
                         needs_to_decelerate = true;
                     }
                 } else { // Moving towards negative limit
                     // Start decelerating if 'a' is within the deceleration distance from the negative limit
-                    if (a <= -limit_deg + deceleration_distance_needed) {
+                    if (a <= -limit_deg + (deceleration_distance_needed * 1.5)) { // Start decelerating earlier
                         needs_to_decelerate = true;
                     }
                 }
