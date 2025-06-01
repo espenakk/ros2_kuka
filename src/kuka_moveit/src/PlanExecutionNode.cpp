@@ -10,9 +10,7 @@ PlanExecutionNode::PlanExecutionNode()
         plan.planning_time = plan_msg.planning_time;
         plan.trajectory = plan_msg.trajectory;
         plan.start_state = plan_msg.trajectory_start;
-        move_group_interface->stop();
-        move_group_interface->asyncExecute(plan);
-        RCLCPP_INFO(get_logger(), "Execution start speed: %f", plan.start_state.joint_state.velocity.back());
+        move_group_interface->execute(plan);
       });
 }
 

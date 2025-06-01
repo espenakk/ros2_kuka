@@ -13,9 +13,6 @@ TrajectoryPlanningNode::TrajectoryPlanningNode()
         move_group_interface->setPlanningPipelineId("pilz_industrial_motion_planner");
         move_group_interface->setPlannerId("PTP");
         move_group_interface->setPoseTarget(pose);
-        auto state = psm->getStateMonitor()->getCurrentState();
-        state->setJointGroupVelocities(PLANNING_GROUP, velocities);
-        move_group_interface->setStartState(*state);
         MoveGroupInterface::Plan plan;
         bool success = (move_group_interface->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);
         if (success)
@@ -26,33 +23,6 @@ TrajectoryPlanningNode::TrajectoryPlanningNode()
           plan_msg.trajectory_start = plan.start_state;
           plan_msg.group_name = PLANNING_GROUP;
           plan_publisher->publish(plan_msg);
-          const auto &state = psm->getPlanningScene()->getCurrentState();
-          for (const auto &name : state.getRobotModel()->getJointModelNames())
-          {
-            const double *posPtr = state.getJointPositions(name);
-
-            RCLCPP_INFO(get_logger(), "%s", name.c_str());
-            if (posPtr != nullptr)
-            {
-              RCLCPP_INFO(get_logger(), "Position: %f", *posPtr);
-            }
-
-            const double *velPtr = state.getJointVelocities(name);
-
-            if (velPtr != nullptr)
-            {
-              RCLCPP_INFO(get_logger(), "Velocity: %f", *velPtr);
-            }
-
-            const double *accPtr = state.getJointAccelerations(name);
-
-            if (accPtr != nullptr)
-            {
-              RCLCPP_INFO(get_logger(), "Acceleration: %f", *accPtr);
-            }
-
-            RCLCPP_INFO(get_logger(), "");
-          }
           std::this_thread::sleep_for(std::chrono::milliseconds(30));
         }
         else

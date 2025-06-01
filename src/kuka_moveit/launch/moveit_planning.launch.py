@@ -29,19 +29,18 @@ def launch_setup(context, *args, **kwargs):
     robot_family = LaunchConfiguration("robot_family")
 
     moveit_config_dir = get_package_share_directory("kuka_kr_moveit_config")
-    curr_dir = get_package_share_directory("kuka_moveit")
 
     moveit_config = (
         MoveItConfigsBuilder("kuka_kr")
         .robot_description(
-            file_path=get_package_share_directory("kuka_hardware")
+            file_path=get_package_share_directory(f"kuka_{robot_family.perform(context)}_support")
             + f"/urdf/{robot_model.perform(context)}.urdf.xacro"
         )
         .robot_description_semantic(
             f"{moveit_config_dir}/urdf/{robot_model.perform(context)}_arm.srdf"
         )
         .robot_description_kinematics(file_path=f"{moveit_config_dir}/config/kinematics.yaml")
-        .trajectory_execution(file_path=f"{curr_dir}/config/moveit_controllers.yaml")
+        .trajectory_execution(file_path=f"{moveit_config_dir}/config/moveit_controllers.yaml")
         .planning_scene_monitor(
             publish_robot_description=True, publish_robot_description_semantic=True
         )
@@ -79,7 +78,7 @@ def launch_setup(context, *args, **kwargs):
 
     to_start = [
         move_group_server,
-        point_to_legal_pose_node,
+        #point_to_legal_pose_node,
         trajectory_planning_node,
         plan_execution_node
     ]

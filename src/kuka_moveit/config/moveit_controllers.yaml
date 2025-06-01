@@ -12,12 +12,8 @@ moveit_simple_controller_manager:
 
   state_interfaces:
     - position
-    - velocity
-    - acceleration
   command_interfaces:
     - position
-    - velocity
-    - acceleration
 
   joint_trajectory_controller:
     action_ns: follow_joint_trajectory

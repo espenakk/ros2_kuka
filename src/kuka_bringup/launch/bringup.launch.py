@@ -12,23 +12,8 @@ def launch_setup(context, *args, **kwargs):
     robot_model = LaunchConfiguration("robot_model")
     robot_family = LaunchConfiguration("robot_family")
     simulation = LaunchConfiguration("simulation")
-
-    robot_description_content = Command(
-        [
-            PathJoinSubstitution([FindExecutable(name="xacro")]),
-            " ",
-            PathJoinSubstitution(
-                [
-                    FindPackageShare("kuka_hardware"),
-                    "urdf",
-                    f"{robot_model.perform(context)}.urdf.xacro",
-                ]
-            ),
-            " ",
-            "use_fake_hardware:=",
-            simulation.perform(context),
-        ]
-    )
+    client_ip = LaunchConfiguration("client_ip")
+    client_port = LaunchConfiguration("client_port")
 
 
     moveit_launch = IncludeLaunchDescription(
@@ -41,15 +26,16 @@ def launch_setup(context, *args, **kwargs):
         }.items()
     )
 
-
     hardware_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("kuka_hardware"), "launch", "launch.py")
+            os.path.join(get_package_share_directory("kuka_rsi_driver"), "launch", "startup.launch.py")
         ),
         launch_arguments={
             "robot_model": robot_model,
             "robot_family": robot_family,
-            "robot_description": robot_description_content
+            "simulation": simulation,
+            "client_ip": client_ip,
+            "client_port": client_port,
         }.items()
     )
 
@@ -72,16 +58,6 @@ def launch_setup(context, *args, **kwargs):
         ],
     )
 
-    # Publish TF
-    robot_state_publisher = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        name="robot_state_publisher",
-        output="both",
-        parameters=[{"robot_description" : robot_description_content},
-                    {"use_sim_time": simulation}],
-    )
-
     prediction_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(get_package_share_directory("kuka_control"), "launch", "ball_trajectory_prediction.launch.py")
@@ -94,7 +70,6 @@ def launch_setup(context, *args, **kwargs):
     nodes_to_start = [
         moveit_launch,
         hardware_launch,
-        robot_state_publisher,
         rviz_node,
         prediction_launch
     ]
@@ -105,4 +80,6 @@ def generate_launch_description():
     launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
     launch_args.append(DeclareLaunchArgument("simulation", default_value="true"))
+    launch_args.append(DeclareLaunchArgument("client_port", default_value="59152"))
+    launch_args.append(DeclareLaunchArgument("client_ip", default_value="0.0.0.0"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])
