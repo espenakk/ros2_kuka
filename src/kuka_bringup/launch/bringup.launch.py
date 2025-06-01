@@ -41,7 +41,7 @@ def launch_setup(context, *args, **kwargs):
 
     robot_description_kinematics = {
         "robot_description_kinematics": {
-            "manipulator": {"kinematics_solver": "kdl_kinematics_plugin/KDLKinematicsPlugin"}
+            "manipulator": {"kinematics_solver": "trac_ik_kinematics_plugin/TRAC_IKKinematicsPlugin"}
         }
     }
     rviz_config_file = (
