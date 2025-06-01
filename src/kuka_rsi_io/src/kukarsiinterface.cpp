@@ -57,8 +57,6 @@ void KukaRsiInterface::listeningStatusChanged(bool connected)
 
 void KukaRsiInterface::rsiMessageReceived(const std::string &host, uint16_t port, void *payload, size_t length)
 {
-    spdlog::info("Got RSI message");
-
     auto now = std::chrono::system_clock::now();
     bool measure_duration = false;
     if(m_rsi_io_active == false)
@@ -82,9 +80,9 @@ void KukaRsiInterface::rsiMessageReceived(const std::string &host, uint16_t port
             return;
         }
     }
-    spdlog::info("Parsing RSI message");
+//     spdlog::info("Parsing RSI message");
     parseRsiMessage(payload, length);
-    spdlog::info("Sending RSI response");
+//     spdlog::info("Sending RSI response");
     sendRsiSetpointMessage(host, port);
     if(measure_duration)
         m_time_previous_message_received = now;
@@ -137,8 +135,8 @@ void KukaRsiInterface::unlocked_setJointSetpoints(const Eigen::ArrayXd &setpoint
     m_joint_setpoint = setpoints;
     if(m_initial_position_set.load())
         m_joint_correction = (setpoints - m_joint_rsi_inital_pos);
-
-    std::stringstream ss;
-    ss << "Set joint positions: " << m_joint_correction.transpose() << std::endl;
-    spdlog::info(ss.str());
+    // Debug
+    // std::stringstream ss;
+    // ss << "Set joint positions: " << m_joint_correction.transpose() << std::endl;
+    // spdlog::info(ss.str());
 }
