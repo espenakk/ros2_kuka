@@ -11,21 +11,33 @@ import xacro
 def launch_setup(context, *args, **kwargs):
     robot_model = LaunchConfiguration("robot_model")
     robot_family = LaunchConfiguration("robot_family")
-    simulation = LaunchConfiguration("simulation")
-    client_ip = LaunchConfiguration("client_ip")
-    client_port = LaunchConfiguration("client_port")
 
-    startup_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            [get_package_share_directory("kuka_rsi_driver"), "/launch/startup.launch.py"]
-        ),
-        launch_arguments={
-            "robot_model": robot_model,
-            "robot_family": robot_family,
-            "use_fake_hardware": simulation,
-            "client_ip": client_ip,
-            "client_port": client_port,
-        }.items()
+    robot_description_content = Command(
+        [
+            PathJoinSubstitution([FindExecutable(name="xacro")]),
+            " ",
+            PathJoinSubstitution(
+                [
+                    FindPackageShare(f"kuka_{robot_family.perform(context)}_support"),
+                    "urdf",
+                    robot_model.perform(context) + ".urdf.xacro",
+                ]
+            ),
+            " ",
+            "use_fake_hardware:=",
+            "true",
+        ]
+    )
+
+    controller_config = (
+        get_package_share_directory("kuka_hardware")
+        + f"/config/fake_hardware_config_6_axis.yaml"
+    )
+
+    control_node = Node(
+        package="controller_manager",
+        executable="ros2_control_node",
+        parameters=[robot_description_content, controller_config],
     )
 
     joint_state_spawner = Node(
@@ -44,10 +56,19 @@ def launch_setup(context, *args, **kwargs):
         ]
     )
 
+    robot_state_publisher = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        name="robot_state_publisher",
+        output="both",
+        parameters=[{"robot_description" : robot_description_content}],
+    )
+
     nodes_to_start = [
-        startup_launch,
+        control_node,
         joint_state_spawner,
-        controller_spawner
+        controller_spawner,
+        robot_state_publisher
     ]
 
     return nodes_to_start
@@ -56,7 +77,4 @@ def generate_launch_description():
     launch_args = []
     launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
-    launch_args.append(DeclareLaunchArgument("simulation", default_value="true"))
-    launch_args.append(DeclareLaunchArgument("client_port", default_value="59152"))
-    launch_args.append(DeclareLaunchArgument("client_ip", default_value="0.0.0.0"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])

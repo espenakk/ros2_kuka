@@ -26,18 +26,30 @@ def launch_setup(context, *args, **kwargs):
         }.items()
     )
 
-    hardware_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(get_package_share_directory("kuka_rsi_driver"), "launch", "startup.launch.py")
-        ),
-        launch_arguments={
-            "robot_model": robot_model,
-            "robot_family": robot_family,
-            "simulation": simulation,
-            "client_ip": client_ip,
-            "client_port": client_port,
-        }.items()
-    )
+    # If simulation is not true, then set hardware_launch to real kuka_rsi_driver
+    if simulation.perform(context) == "true":
+        hardware_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(get_package_share_directory("kuka_hardware"), "launch", "launch.py")
+            ),
+            launch_arguments={
+                "robot_model": robot_model,
+                "robot_family": robot_family,
+            }.items()
+        )
+    else:
+        hardware_launch = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(get_package_share_directory("kuka_rsi_driver"), "launch", "startup.launch.py")
+            ),
+            launch_arguments={
+                "robot_model": robot_model,
+                "robot_family": robot_family,
+                "client_ip": client_ip,
+                "client_port": client_port,
+            }.items()
+        )
+
 
     robot_description_kinematics = {
         "robot_description_kinematics": {
@@ -79,7 +91,7 @@ def generate_launch_description():
     launch_args = []
     launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
-    launch_args.append(DeclareLaunchArgument("simulation", default_value="true"))
+    launch_args.append(DeclareLaunchArgument("simulation", default_value="false"))
     launch_args.append(DeclareLaunchArgument("client_port", default_value="59152"))
     launch_args.append(DeclareLaunchArgument("client_ip", default_value="0.0.0.0"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])
