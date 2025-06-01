@@ -12,7 +12,6 @@ TrajectoryPlanningNode::TrajectoryPlanningNode()
       {
         move_group_interface->setPlanningPipelineId("pilz_industrial_motion_planner");
         move_group_interface->setPlannerId("PTP");
-        move_group_interface->setStartStateToCurrentState();
         move_group_interface->setPoseTarget(pose);
         auto state = psm->getStateMonitor()->getCurrentState();
         state->setJointGroupVelocities(PLANNING_GROUP, velocities);

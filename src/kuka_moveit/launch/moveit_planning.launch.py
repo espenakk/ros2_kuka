@@ -34,7 +34,7 @@ def launch_setup(context, *args, **kwargs):
     moveit_config = (
         MoveItConfigsBuilder("kuka_kr")
         .robot_description(
-            file_path=get_package_share_directory(f"kuka_{robot_family.perform(context)}_support")
+            file_path=get_package_share_directory("kuka_hardware")
             + f"/urdf/{robot_model.perform(context)}.urdf.xacro"
         )
         .robot_description_semantic(

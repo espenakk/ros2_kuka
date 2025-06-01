@@ -19,7 +19,7 @@ def launch_setup(context, *args, **kwargs):
             " ",
             PathJoinSubstitution(
                 [
-                    FindPackageShare(f"kuka_{robot_family.perform(context)}_support"),
+                    FindPackageShare("kuka_hardware"),
                     "urdf",
                     f"{robot_model.perform(context)}.urdf.xacro",
                 ]
