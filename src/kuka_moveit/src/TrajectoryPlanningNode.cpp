@@ -10,8 +10,8 @@ TrajectoryPlanningNode::TrajectoryPlanningNode()
   pose_subscriber = this->create_subscription<geometry_msgs::msg::Pose>("/desired_pose", 10,
       [this](const geometry_msgs::msg::Pose &pose)
       {
-        move_group_interface->setPlanningPipelineId("pilz_industrial_motion_planner");
-        move_group_interface->setPlannerId("PTP");
+        //move_group_interface->setPlanningPipelineId("pilz_industrial_motion_planner");
+        //move_group_interface->setPlannerId("PTP");
         move_group_interface->setPoseTarget(pose);
         MoveGroupInterface::Plan plan;
         bool success = (move_group_interface->plan(plan) == moveit::core::MoveItErrorCode::SUCCESS);

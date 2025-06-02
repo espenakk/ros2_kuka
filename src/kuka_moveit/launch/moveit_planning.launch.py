@@ -43,9 +43,11 @@ def launch_setup(context, *args, **kwargs):
         )
         .robot_description_kinematics(file_path=f"{curr_dir}/config/kinematics.yaml")
         .trajectory_execution(file_path=f"{moveit_config_dir}/config/moveit_controllers.yaml")
-        .planning_scene_monitor(
-            publish_robot_description=True, publish_robot_description_semantic=True
-        )
+        ###########################################
+        # Ruings our config for some stupid reason
+        #.planning_scene_monitor(
+        #    publish_robot_description=True, publish_robot_description_semantic=True
+        #)
         .joint_limits(
             file_path=get_package_share_directory(f"kuka_{robot_family.perform(context)}_support")
             + f"/config/{robot_model.perform(context)}_joint_limits.yaml"
