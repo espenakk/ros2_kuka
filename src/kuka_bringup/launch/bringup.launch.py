@@ -75,7 +75,7 @@ def launch_setup(context, *args, **kwargs):
             os.path.join(get_package_share_directory("kuka_control"), "launch", "ball_trajectory_prediction.launch.py")
         ),
         launch_arguments={
-            "test_mode": simulation,
+            "test_mode": "true",
         }.items()
     )
 
