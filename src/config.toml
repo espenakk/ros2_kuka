@@ -1,0 +1,53 @@
+# Ball detection settings
+[ball]
+# Separate HSV values for each camera
+# Venstre kamera (index 4): RGB(255,130,168) ≈ HSV(165,49,255)
+hsv_min_left = [40, 40, 40]   # Justert for venstre kamera
+hsv_max_left = [90, 255, 135]  # Smalare range for venstre
+
+# Høgre kamera (index 6): RGB(210,60,90) ≈ HSV(170,71,210) 
+hsv_min_right = [35, 35, 50]  # Justert for høgre kamera  
+hsv_max_right = [93, 255, 135] # Dekker raudare toner
+
+# Fallback verdiar 
+hsv_min = [40, 40, 40]   
+hsv_max = [93, 255, 135] 
+
+min_radius = 3.8
+min_area = 35
+circularity_threshold = 0.40
+
+[performance]
+blur_kernel_size = 7
+morph_iterations = 2 
+
+# Grid/coordinate system settings  
+[grid]
+origin_x = 0.0    # Grid opphav X-koordinat (mm)
+origin_y = 0.0    # Grid opphav Y-koordinat (mm)
+cell = 25.0       # Grid celle størrelse (mm)
+
+# Network settings for data transmission
+[network]
+host = "127.0.0.1"  # IP-adresse for å sende data
+port = 5555         # Port nummer
+
+# Camera settings (Sandberg USB Webcam 1080P Saver)
+[camera]
+# Oppdatert med dine faktiske kamera-indekser
+left_index = 4      # Venstre kamera
+right_index = 6     # Høgre kamera
+
+# HD 720p oppløysing
+width = 800
+height = 720
+
+fps = 30
+fov = 60
+auto_exposure = true
+
+# Debug/logging settings
+[debug]
+show_fps = true
+log_detections = true  # Satt til true for testing
+save_debug_images = false   
