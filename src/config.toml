@@ -2,8 +2,8 @@
 [ball]
 # Separate HSV values for each camera
 # Venstre kamera (index 4): RGB(255,130,168) ≈ HSV(165,49,255)
-hsv_min_left = [40, 40, 40]   # Justert for venstre kamera
-hsv_max_left = [90, 255, 135]  # Smalare range for venstre
+hsv_min_left = [40, 35, 75]   # Justert for venstre kamera
+hsv_max_left = [93, 255, 135]  # Smalare range for venstre
 
 # Høgre kamera (index 6): RGB(210,60,90) ≈ HSV(170,71,210) 
 hsv_min_right = [35, 35, 50]  # Justert for høgre kamera  
