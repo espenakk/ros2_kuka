@@ -5,7 +5,8 @@
 #include <chrono>
 
 TrajectoryPlanningNode::TrajectoryPlanningNode()
-    : Node("trajectory_planning_node")
+    : Node("trajectory_planning_node",
+        rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
 {
   pose_subscriber = this->create_subscription<geometry_msgs::msg::Pose>("/desired_pose", 10,
       [this](const geometry_msgs::msg::Pose &pose)

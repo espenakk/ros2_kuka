@@ -1,7 +1,8 @@
 #include "kuka_moveit/PlanExecutionNode.hpp"
 
 PlanExecutionNode::PlanExecutionNode()
-    : Node("plan_execution_node")
+    : Node("plan_execution_node",
+        rclcpp::NodeOptions().automatically_declare_parameters_from_overrides(true))
 {
   pose_subscriber = this->create_subscription<moveit_msgs::msg::MotionPlanResponse>("/desired_plan", 10,
       [this](const moveit_msgs::msg::MotionPlanResponse &plan_msg)
