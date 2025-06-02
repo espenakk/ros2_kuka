@@ -92,6 +92,6 @@ def generate_launch_description():
     launch_args.append(DeclareLaunchArgument("robot_model", default_value="kr6_r900_sixx"))
     launch_args.append(DeclareLaunchArgument("robot_family", default_value="agilus"))
     launch_args.append(DeclareLaunchArgument("simulation", default_value="false"))
-    launch_args.append(DeclareLaunchArgument("client_port", default_value="59152"))
-    launch_args.append(DeclareLaunchArgument("client_ip", default_value="0.0.0.0"))
+    launch_args.append(DeclareLaunchArgument("client_port", default_value="49153"))
+    launch_args.append(DeclareLaunchArgument("client_ip", default_value="192.168.1.50"))
     return LaunchDescription(launch_args + [OpaqueFunction(function=launch_setup)])
