@@ -30,7 +30,7 @@ def launch_setup(context, *args, **kwargs):
     )
 
     controller_config = (
-        get_package_share_directory("kuka_hardware")
+        get_package_share_directory("kuka_resources")
         + f"/config/fake_hardware_config_6_axis.yaml"
     )
 
