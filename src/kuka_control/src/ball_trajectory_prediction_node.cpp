@@ -106,7 +106,7 @@ void BallTrajectoryPredictionNode::ballCallback(
       m.pose.position.x = hit.x();
       m.pose.position.y = hit.y();
       m.pose.position.z = hit.z();
-      m.scale.x = m.scale.y = m.scale.z = 0.12; // larger sphere
+      m.scale.x = m.scale.y = m.scale.z = 0.25;
       m.color.a = 1.0;
       m.color.r = 0.0;
       m.color.g = 0.5;
@@ -128,7 +128,7 @@ void BallTrajectoryPredictionNode::ballCallback(
   ball.pose.position.x = z.x();
   ball.pose.position.y = z.y();
   ball.pose.position.z = z.z();
-  ball.scale.x = ball.scale.y = ball.scale.z = 0.10;
+  ball.scale.x = ball.scale.y = ball.scale.z = 0.20;
   ball.color.a = 1.0;
   ball.color.r = 0.0;
   ball.color.g = 1.0;
@@ -152,7 +152,7 @@ void BallTrajectoryPredictionNode::ballCallback(
     m.pose.position.x = p.x();
     m.pose.position.y = p.y();
     m.pose.position.z = p.z();
-    m.scale.x = m.scale.y = m.scale.z = 0.05;
+    m.scale.x = m.scale.y = m.scale.z = 0.12;
 
     double ratio = static_cast<double>(i) / future.size();
     m.color.a = 1.0;
