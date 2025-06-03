@@ -2,7 +2,6 @@
 import cv2
 import numpy as np
 import yaml
-import argparse
 import socket
 import toml
 import time
@@ -10,35 +9,87 @@ import logging
 import cv2.aruco as aruco
 import math
 from typing import Tuple, Optional, List, Dict
+from rclpy.node import Node
+import rclpy
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+from geometry_msgs.msg import Point
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class CombinedTracker:
-    def __init__(self, config_path: str = 'config.toml', params_path: str = 'stereo_params.yml'):
+class CombinedTracker(Node):
+    def __init__(self):
+        super().__init__("camera_node")
+        self.declare_parameter("detection_config_path", "")
+        config_path = self.get_parameter("detection_config_path").get_parameter_value().string_value
         self.config = toml.load(config_path)
-        self.load_stereo_params(params_path)
-        self.setup_network()
+
+        self.declare_parameter("stereo_params_path", "")
+        params_path = self.get_parameter("stereo_params_path").get_parameter_value()
+        self.load_stereo_params(params_path.string_value)
+
         self.setup_detection_params()
-        self.setup_camera_params()
         self.setup_aruco()
+
+        self.bridge = CvBridge()
+
+        # Subscribe to left_camera
+        self.left_cam_subscription = self.create_subscription(
+            Image,
+            "/camera_left/image_raw",
+            self.left_image_callback,
+            10)
+
+        # Subscribe to right_camera
+        self.right_cam_subscription = self.create_subscription(
+            Image,
+            "/camera_right/image_raw",
+            self.right_image_callback,
+            10)
+
+        # Publish images with markers
+        self.left_marker_img_publisher = self.create_publisher(
+            Image,
+            "/camera_left/marker_image",
+            10)
+        self.right_marker_img_publisher = self.create_publisher(
+            Image,
+            "camera_right/marker_image",
+            10)
+
+        # Publish ball position
+        self.ball_publisher = self.create_publisher(
+            Point,
+            "/ball/position",
+            10)
         
         # Storage for tracking data
         self.base_frame_pose = None
         self.box_poses = {}
         self.last_ball_world_pos = None
+
+        self.prevLeftPt = None
+        self.prevRightPt = None
+
+    def left_image_callback(self, img):
+        self.generic_camera_callback(img, self.prevRightPt, 'left', self.mtxL, self.distL)
+
+    def right_image_callback(self, img):
+        self.generic_camera_callback(img, self.prevLeftPt, 'right', self.mtxR, self.distR)
+
         
     def setup_aruco(self):
         """Initialize ArUco detector"""
-        try:
-            # New OpenCV (4.7+)
-            self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
-            self.aruco_params = aruco.DetectorParameters()
-        except AttributeError:
+        #try:
+        #    # New OpenCV (4.7+)
+        #    self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+        #    self.aruco_params = aruco.DetectorParameters()
+        #except AttributeError:
             # Old OpenCV
-            self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
-            self.aruco_params = aruco.DetectorParameters_create()
+        self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
+        self.aruco_params = aruco.DetectorParameters_create()
         
         # Marker definitions
         self.BASEFRAME_ID = 0
@@ -89,17 +140,6 @@ class CombinedTracker:
             logger.error(f"Error loading stereo parameters: {e}")
             raise
     
-    def setup_network(self):
-        """Initialize UDP socket for data transmission"""
-        try:
-            self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.host = self.config['network']['host']
-            self.port = self.config['network']['port']
-            logger.info(f"UDP socket configured for {self.host}:{self.port}")
-        except Exception as e:
-            logger.error(f"Error setting up network: {e}")
-            raise
-    
     def setup_detection_params(self):
         """Setup detection parameters from config"""
         ball_config = self.config['ball']
@@ -123,49 +163,37 @@ class CombinedTracker:
         self.blur_kernel_size = perf_config.get('blur_kernel_size', 7)
         self.morph_iterations = perf_config.get('morph_iterations', 2)
         
-        # Debug settings
-        self.debug_config = self.config['debug']
-        self.show_fps = self.debug_config['show_fps']
-        self.log_detections = self.debug_config['log_detections']
-        
         logger.info(f"Detection params loaded")
     
-    def setup_camera_params(self):
-        """Setup camera parameters from config"""
-        camera_config = self.config['camera']
-        self.left_cam_index = camera_config['left_index']
-        self.right_cam_index = camera_config['right_index']
-        self.cam_width = camera_config['width']
-        self.cam_height = camera_config['height']
-        self.cam_fps = camera_config['fps']
-        self.auto_exposure = camera_config['auto_exposure']
-        
-        logger.info(f"Camera settings loaded")
-    
-    def setup_camera(self, cap, index):
-        """Configure camera settings"""
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.cam_width)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.cam_height)
-        cap.set(cv2.CAP_PROP_FPS, self.cam_fps)
-        
-        if not self.auto_exposure:
-            cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
-            
     def detect_aruco_markers(self, image: np.ndarray, camera_matrix: np.ndarray, dist_coeffs: np.ndarray) -> Dict:
         """Detect ArUco markers in image"""
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        self.get_logger().info("14")
         
         try:
             # Try new OpenCV API first
+            self.get_logger().info("18")
             detector = aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
+            self.get_logger().info("15")
             corners, ids, rejected = detector.detectMarkers(gray)
+            self.get_logger().info("16")
         except AttributeError:
+            self.get_logger().info("19")
+            if self.aruco_dict is None:
+                self.get_logger().info("Aruco dict none")
+            if self.aruco_params is None:
+                self.get_logger().info("Aruco params is none")
+            if gray is None:
+                self.get_logger().info("No gray today, the gray has gone away")
+            
             # Fall back to old API
             corners, ids, rejected = aruco.detectMarkers(
                 gray, self.aruco_dict, parameters=self.aruco_params
             )
+            self.get_logger().info("17")
         
         detected_markers = {}
+        self.get_logger().info("20")
         
         if ids is not None:
             for i, marker_id in enumerate(ids.flatten()):
@@ -342,148 +370,66 @@ class CombinedTracker:
             }
         
         return None
-    
-    def send_data(self, data: Dict):
-        """Send data via UDP"""
+
+    def generic_camera_callback(self, img, other_pt, side : str, mtx, dist):
+        # Getting images
         try:
-            import json
-            # Convert numpy arrays to lists for JSON serialization
-            def convert_numpy(obj):
-                if isinstance(obj, np.ndarray):
-                    return obj.tolist()
-                elif isinstance(obj, dict):
-                    return {k: convert_numpy(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_numpy(v) for v in obj]
-                else:
-                    return obj
-            
-            serializable_data = convert_numpy(data)
-            packet = json.dumps(serializable_data)
-            self.udp_socket.sendto(packet.encode(), (self.host, self.port))
-            
-            if self.log_detections:
-                logger.debug(f"Sent: {serializable_data}")
-            
+            cv_img = self.bridge.imgmsg_to_cv2(img, "bgr8")
         except Exception as e:
-            logger.error(f"Error sending data: {e}")
+            self.get_logger().error('Failed to convert image: %s' % str(e))
+            return
+
+        self.get_logger().info("1")
+
+        # Storage for detected points
+        pt = None
+        self.get_logger().info("2")
+
+        # Detect ArUco markers in left camera (for base frame reference)
+        markers = self.detect_aruco_markers(cv_img, mtx, dist)
+        self.get_logger().info("3")
+
+        # Update base frame pose if detected
+        if self.BASEFRAME_ID in markers:
+            self.base_frame_pose = markers[self.BASEFRAME_ID]
+        self.get_logger().info("4")
+
+        box_info = self.get_box_orientation_and_pose(markers)
+        self.get_logger().info("5")
+
+        detection, radius = self.detect_ball(cv_img, side)
+        self.get_logger().info("6")
+
+        if detection is not None:
+            pt = detection
+        self.get_logger().info("7")
+
+        ball_world_pos = None
+        if pt is not None and other_pt is not None:
+            self.get_logger().info("8")
+            xyz_camera = self.triangulate_point(
+                np.array([pt]), 
+                np.array([other_pt])
+            )
+            self.get_logger().info("9")
+            
+            # Transform to base frame coordinates
+            ball_world_pos = self.transform_to_baseframe(xyz_camera)
+            self.get_logger().info("10")
+            
+            if ball_world_pos is not None:
+                self.last_ball_world_pos = ball_world_pos
+                self.get_logger().info("11")
+
+            ball_pos_msg = Point(ball_world_pos[0], ball_world_pos[1], ball_world_pos[2])
+            self.get_logger().info("12")
+            self.ball_publisher.publish(ball_pos_msg)
+            self.get_logger().info("13")
+
+        self.draw_visualization(cv_img, markers, detection, radius, box_info, mtx, dist, side)
+
     
-    def run(self, left_cam: int = None, right_cam: int = None, show_display: bool = True):
-        """Main tracking loop"""
-        try:
-            if left_cam is None:
-                left_cam = self.left_cam_index
-            if right_cam is None:
-                right_cam = self.right_cam_index
-            
-            # Initialize cameras
-            cap_left = cv2.VideoCapture(left_cam)
-            cap_right = cv2.VideoCapture(right_cam)
-            
-            if not (cap_left.isOpened() and cap_right.isOpened()):
-                logger.error("Failed to open cameras")
-                return
-            
-            self.setup_camera(cap_left, left_cam)
-            self.setup_camera(cap_right, right_cam)
-            
-            logger.info("Starting combined ball and ArUco tracking...")
-            
-            # Storage for detected points
-            pt_left = None
-            pt_right = None
-            
-            frame_count = 0
-            fps_start = time.time()
-            
-            while True:
-                ret_left, img_left = cap_left.read()
-                ret_right, img_right = cap_right.read()
-                
-                if not (ret_left and ret_right):
-                    logger.warning("Failed to read frames")
-                    continue
-                
-                frame_count += 1
-                
-                # Detect ArUco markers in left camera (for base frame reference)
-                markers_left = self.detect_aruco_markers(img_left, self.mtxL, self.distL)
-                
-                # Update base frame pose if detected
-                if self.BASEFRAME_ID in markers_left:
-                    self.base_frame_pose = markers_left[self.BASEFRAME_ID]
-                
-                # Get box orientation and pose
-                box_info = self.get_box_orientation_and_pose(markers_left)
-                
-                # Detect ball in both cameras
-                detection_left, radius_left = self.detect_ball(img_left, 'left')
-                detection_right, radius_right = self.detect_ball(img_right, 'right')
-                
-                # Update ball tracking
-                if detection_left is not None:
-                    pt_left = detection_left
-                if detection_right is not None:
-                    pt_right = detection_right
-                
-                # Triangulate ball position if both points available
-                ball_world_pos = None
-                if pt_left is not None and pt_right is not None:
-                    xyz_camera = self.triangulate_point(
-                        np.array([pt_left]), 
-                        np.array([pt_right])
-                    )
-                    
-                    # Transform to base frame coordinates
-                    ball_world_pos = self.transform_to_baseframe(xyz_camera)
-                    
-                    if ball_world_pos is not None:
-                        self.last_ball_world_pos = ball_world_pos
-                
-                # Prepare data packet
-                data_packet = {
-                    'timestamp': time.time(),
-                    'frame': frame_count,
-                    'base_frame_detected': self.base_frame_pose is not None,
-                    'ball': {
-                        'detected': ball_world_pos is not None,
-                        'world_pos_mm': ball_world_pos.tolist() if ball_world_pos is not None else None,
-                        'camera_pos_mm': xyz_camera.tolist() if 'xyz_camera' in locals() and xyz_camera is not None else None
-                    },
-                    'box': box_info if box_info else None
-                }
-                
-                # Send data
-                self.send_data(data_packet)
-                
-                # Display if requested
-                if show_display:
-                    self.draw_visualization(img_left, img_right, markers_left, 
-                                          detection_left, detection_right, 
-                                          radius_left, radius_right, box_info)
-                    
-                    # Show FPS
-                    if self.show_fps and frame_count % 30 == 0:
-                        fps = frame_count / (time.time() - fps_start)
-                        logger.info(f"FPS: {fps:.1f}")
-                    
-                    if cv2.waitKey(1) & 0xFF == 27:  # ESC
-                        logger.info("Exiting...")
-                        break
-            
-        except Exception as e:
-            logger.error(f"Error in main loop: {e}")
-            
-        finally:
-            if 'cap_left' in locals():
-                cap_left.release()
-            if 'cap_right' in locals():
-                cap_right.release()
-            cv2.destroyAllWindows()
-            self.udp_socket.close()
-    
-    def draw_visualization(self, img_left, img_right, markers, 
-                          ball_left, ball_right, radius_left, radius_right, box_info):
+    def draw_visualization(self, img, markers, ball_pos, radius, box_info, mtx, dist, side):
         """Draw visualization overlays"""
         # Draw ArUco markers
         for marker_id, info in markers.items():
@@ -491,8 +437,8 @@ class CombinedTracker:
             center = info['center'].astype(int)
             
             # Draw marker outline
-            cv2.polylines(img_left, [corners], True, (0, 255, 0), 2)
-            cv2.putText(img_left, f"{info['name']}", 
+            cv2.polylines(img, [corners], True, (0, 255, 0), 2)
+            cv2.putText(img, f"{info['name']}", 
                        (center[0] - 30, center[1] - 15),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
             
@@ -500,71 +446,66 @@ class CombinedTracker:
             if 'rvec' in info:
                 try:
                     # Try new OpenCV method
-                    cv2.drawFrameAxes(img_left, self.mtxL, self.distL,
+                    cv2.drawFrameAxes(img, mtx, dist,
                                     info['rvec'], info['tvec'], self.marker_size * 0.5)
                 except AttributeError:
                     try:
                         # Try old aruco method
-                        aruco.drawAxis(img_left, self.mtxL, self.distL,
+                        aruco.drawAxis(img, mtx, dist,
                                      info['rvec'], info['tvec'], self.marker_size * 0.5)
                     except AttributeError:
                         # Skip axis drawing if neither method works
                         pass
         
         # Draw ball detections
-        if ball_left is not None:
-            cv2.circle(img_left, (int(ball_left[0]), int(ball_left[1])), 
-                     int(radius_left), (0, 255, 255), 2)
-            cv2.putText(img_left, "BALL", 
-                       (int(ball_left[0]-20), int(ball_left[1]-25)), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
-        
-        if ball_right is not None:
-            cv2.circle(img_right, (int(ball_right[0]), int(ball_right[1])), 
-                     int(radius_right), (0, 255, 255), 2)
-            cv2.putText(img_right, "BALL", 
-                       (int(ball_right[0]-20), int(ball_right[1]-25)), 
+        if ball_pos is not None:
+            cv2.circle(img, (int(ball_pos[0]), int(ball_pos[1])), 
+                     int(radius), (0, 255, 255), 2)
+            cv2.putText(img, "BALL", 
+                       (int(ball_pos[0]-20), int(ball_pos[1]-25)), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
         
         # Draw status info
         y_offset = 30
         if self.base_frame_pose is not None:
-            cv2.putText(img_left, "BASE FRAME: OK", (10, y_offset), 
+            cv2.putText(img, "BASE FRAME: OK", (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             y_offset += 25
         else:
-            cv2.putText(img_left, "BASE FRAME: NOT FOUND", (10, y_offset), 
+            cv2.putText(img, "BASE FRAME: NOT FOUND", (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
             y_offset += 25
         
         if box_info:
-            cv2.putText(img_left, f"BOX: {box_info['dominant_face']}", (10, y_offset), 
+            cv2.putText(img, f"BOX: {box_info['dominant_face']}", (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
             y_offset += 25
         
         if self.last_ball_world_pos is not None:
             pos_text = f"BALL: ({self.last_ball_world_pos[0]:.1f}, {self.last_ball_world_pos[1]:.1f}, {self.last_ball_world_pos[2]:.1f})"
-            cv2.putText(img_left, pos_text, (10, y_offset), 
+            cv2.putText(img, pos_text, (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
         
-        cv2.imshow('Left Camera', img_left)
-        cv2.imshow('Right Camera', img_right)
+        # Publish markers and ball detections
+        try:
+            img_msg = self.bridge.cv2_to_imgmsg(img, "bgr8")
+        except Exception as e:
+            self.get_logger().error('Failed to convert image: %s' % str(e))
+            return
 
-def main():
-    parser = argparse.ArgumentParser(description='Combined Ball and ArUco Tracker')
-    parser.add_argument('--left', type=int, default=None, help='Left camera index')
-    parser.add_argument('--right', type=int, default=None, help='Right camera index')
-    parser.add_argument('--show', action='store_true', default=True, help='Show camera feeds')
-    parser.add_argument('--config', default='config.toml', help='Configuration file')
-    parser.add_argument('--params', default='stereo_params.yml', help='Stereo parameters file')
-    
-    args = parser.parse_args()
-    
-    try:
-        tracker = CombinedTracker(args.config, args.params)
-        tracker.run(args.left, args.right, args.show)
-    except Exception as e:
-        logger.error(f"Failed to initialize tracker: {e}")
+
+        if side == 'left':
+            self.left_marker_img_publisher.publish(img_msg)
+        else:
+            self.right_marker_img_publisher.publish(img_msg)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    camera_node = CombinedTracker()
+    rclpy.spin(camera_node)
+    camera_node.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

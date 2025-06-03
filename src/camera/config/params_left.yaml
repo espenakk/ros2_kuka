@@ -1,0 +1,13 @@
+/**:
+    ros__parameters:
+      video_device: "/dev/video0"
+      framerate: 30.0
+      frame_id: "camera_left"
+      image_width: 800
+      image_height: 720
+      camera_name: "camera_left"
+      #camera_info_url: "package://usb_cam/config/camera_info.yaml"
+      auto_white_balance: true
+      white_balance: 4000
+      autoexposure: true
+      autofocus: false
