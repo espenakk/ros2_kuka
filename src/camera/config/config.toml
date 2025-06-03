@@ -16,6 +16,15 @@ min_radius = 3.8
 min_area = 35
 circularity_threshold = 0.40
 
+[filter]
+brightness = -10
+saturation = 2.4
+vibrance = 0.1
+sharpness = 0.9
+
+[debug]
+show_fps = true
+
 [performance]
 blur_kernel_size = 7
 morph_iterations = 2 

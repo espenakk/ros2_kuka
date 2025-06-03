@@ -48,7 +48,7 @@ def launch_setup(context, *args, **kwargs):
     nodes_to_start = [
         camera_left_node,
         camera_right_node,
-        #detection_node,
+        detection_node,
     ]
     return nodes_to_start
 

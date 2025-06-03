@@ -1,36 +1,30 @@
-#!/usr/bin/env python3
 import cv2
 import numpy as np
 import yaml
-import socket
-import toml
 import time
-import logging
 import cv2.aruco as aruco
-import math
 from typing import Tuple, Optional, List, Dict
 from rclpy.node import Node
 import rclpy
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Point
+import toml
+from typing import Tuple, Optional, Dict
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class CombinedTracker(Node):
     def __init__(self):
         super().__init__("camera_node")
         self.declare_parameter("detection_config_path", "")
         config_path = self.get_parameter("detection_config_path").get_parameter_value().string_value
-        self.config = toml.load(config_path)
+        config = toml.load(config_path)
 
         self.declare_parameter("stereo_params_path", "")
-        params_path = self.get_parameter("stereo_params_path").get_parameter_value()
-        self.load_stereo_params(params_path.string_value)
+        params_path = self.get_parameter("stereo_params_path").get_parameter_value().string_value
+        self.load_stereo_params(params_path)
 
-        self.setup_detection_params()
+        self.setup_detection_params(config)
         self.setup_aruco()
 
         self.bridge = CvBridge()
@@ -67,7 +61,6 @@ class CombinedTracker(Node):
         
         # Storage for tracking data
         self.base_frame_pose = None
-        self.box_poses = {}
         self.last_ball_world_pos = None
 
         self.prevLeftPt = None
@@ -81,38 +74,30 @@ class CombinedTracker(Node):
 
         
     def setup_aruco(self):
-        """Initialize ArUco detector"""
         #try:
         #    # New OpenCV (4.7+)
         #    self.aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
         #    self.aruco_params = aruco.DetectorParameters()
+        #    # Optimize for speed
+        #    self.aruco_params.minMarkerPerimeterRate = 0.01
+        #    self.aruco_params.maxMarkerPerimeterRate = 4.0
+        #    self.aruco_params.polygonalApproxAccuracyRate = 0.1
         #except AttributeError:
             # Old OpenCV
         self.aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_50)
         self.aruco_params = aruco.DetectorParameters_create()
         
-        # Marker definitions
+        # Marker definitions - hardcoded
         self.BASEFRAME_ID = 0
         self.BOX_MARKERS = {
-            1: "Box_Top",
-            2: "Box_Front", 
-            3: "Box_Left",
-            4: "Box_Right",
-            5: "Box_Back"
+            1: "Box_Top", 2: "Box_Front", 3: "Box_Left",
+            4: "Box_Right", 5: "Box_Back"
         }
         
-        # Marker size (same as in ArUco detector)
         self.marker_size = 0.068  # 6.8cm
-        
-        # Camera offset from base frame center (in mm)
-        # Camera is mounted 10cm to the right (positive Y) and 7cm above (positive Z) base frame center
         self.camera_offset = np.array([0.0, 100.0, 70.0])  # [X, Y, Z] in mm
-        # X: 0cm (no forward/backward offset from base frame)
-        # Y: 10cm to the right (positive Y direction for robot)  
-        # Z: 7cm above base frame center
         
-        logger.info("ArUco detector initialized")
-        logger.info(f"Camera offset from base frame: {self.camera_offset} mm")
+        self.get_logger().info("ArUco detector initialized")
         
     def load_stereo_params(self, params_path: str):
         """Load stereo calibration parameters"""
@@ -131,19 +116,32 @@ class CombinedTracker(Node):
             self.P1 = self.mtxL @ np.hstack([np.eye(3), np.zeros((3,1))])
             self.P2 = self.mtxR @ np.hstack([self.R, self.T])
             
-            logger.info("Stereo parameters loaded successfully")
+            self.get_logger().info("Stereo parameters loaded successfully")
             
         except FileNotFoundError:
-            logger.error(f"Stereo parameters file {params_path} not found. Run calibration first.")
+            self.get_logger().error(f"Stereo parameters file {params_path} not found. Run calibration first.")
             raise
         except Exception as e:
-            logger.error(f"Error loading stereo parameters: {e}")
+            self.get_logger().error(f"Error loading stereo parameters: {e}")
             raise
     
-    def setup_detection_params(self):
+    def setup_detection_params(self, config):
         """Setup detection parameters from config"""
-        ball_config = self.config['ball']
-        
+        ball_config = config['ball']
+        filter_config = config['filter']
+        debug_config = config['debug']
+
+        self.min_radius = ball_config['min_radius']
+        self.min_area = ball_config.get('min_area', 50)
+        self.circularity_threshold = ball_config.get('circularity_threshold', 0.8)
+
+        self.brightness = filter_config['brightness']
+        self.saturation = filter_config['saturation']
+        self.vibrance = filter_config['vibrance']
+        self.sharpness = filter_config['sharpness']
+
+        self.show_fps = debug_config['show_fps']
+
         # Ball detection HSV values
         if 'hsv_min_left' in ball_config and 'hsv_min_right' in ball_config:
             self.hsv_min_left = tuple(ball_config['hsv_min_left'])
@@ -153,47 +151,98 @@ class CombinedTracker(Node):
         else:
             self.hsv_min_left = self.hsv_min_right = tuple(ball_config['hsv_min'])
             self.hsv_max_left = self.hsv_max_right = tuple(ball_config['hsv_max'])
+    
+    def apply_filters(self, frame, camera_side='left'):
+        """Fast filter application - same as fine_tune_hsv.py"""
+        filtered = frame.copy().astype(np.float32)
         
-        self.min_radius = ball_config['min_radius']
-        self.min_area = ball_config.get('min_area', 50)
-        self.circularity_threshold = ball_config.get('circularity_threshold', 0.8)
+        # Brightness adjustment
+        if self.brightness != 0:
+            filtered = np.clip(filtered + self.brightness, 0, 255)
         
-        # Performance parameters
-        perf_config = self.config.get('performance', {})
-        self.blur_kernel_size = perf_config.get('blur_kernel_size', 7)
-        self.morph_iterations = perf_config.get('morph_iterations', 2)
         
-        logger.info(f"Detection params loaded")
+        # Convert to HSV for saturation and vibrance
+        if self.saturation != 1.0 or self.vibrance != 1.0:
+            hsv = cv2.cvtColor(filtered.astype(np.uint8), cv2.COLOR_BGR2HSV).astype(np.float32)
+            
+            # Saturation adjustment
+            if self.saturation != 1.0:
+                hsv[:, :, 1] = np.clip(hsv[:, :, 1] * self.saturation, 0, 255)
+            
+            # Vibrance - affects low saturation areas more
+            if self.vibrance != 1.0:
+                low_sat_mask = hsv[:, :, 1] < 128
+                hsv[low_sat_mask, 1] = np.clip(hsv[low_sat_mask, 1] * self.vibrance, 0, 255)
+            
+            filtered = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR).astype(np.float32)
+        
+        # Sharpness (unsharp mask)
+        if self.sharpness != 1.0:
+            blurred = cv2.GaussianBlur(filtered.astype(np.uint8), (0, 0), 1.0)
+            filtered = cv2.addWeighted(filtered.astype(np.uint8), 1.0 + (self.sharpness - 1.0), 
+                                     blurred, -(self.sharpness - 1.0), 0).astype(np.float32)
+        
+        return np.clip(filtered, 0, 255).astype(np.uint8)
+        
+    def detect_ball(self, image: np.ndarray, camera_side: str = 'left') -> Tuple[Optional[Tuple[float, float]], float]:
+        """Ultra-fast ball detection - same method as fine_tune_hsv.py"""
+        try:
+            # Use correct HSV values based on camera
+            if camera_side == 'left':
+                hsv_min = self.hsv_min_left
+                hsv_max = self.hsv_max_left
+            else:
+                hsv_min = self.hsv_min_right
+                hsv_max = self.hsv_max_right
+            
+            # Convert to HSV and create mask
+            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, hsv_min, hsv_max)
+            
+            # Process mask to reduce noise - same as fine_tune_hsv.py
+            kernel = np.ones((5,5), np.uint8)
+            mask_clean = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
+            mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, kernel)
+            mask_clean = cv2.medianBlur(mask_clean, 7)
+            
+            # Find contours
+            contours, _ = cv2.findContours(mask_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if contours:
+                for contour in contours:
+                    area = cv2.contourArea(contour)
+                    if area > self.min_area:
+                        perimeter = cv2.arcLength(contour, True)
+                        if perimeter > 0:
+                            circularity = 4 * np.pi * area / (perimeter * perimeter)
+                            
+                            if circularity > self.circularity_threshold:
+                                (x, y), radius = cv2.minEnclosingCircle(contour)
+                                if radius > self.min_radius:
+                                    return ((x, y), radius)
+            
+            return None, 0
+            
+        except Exception as e:
+            self.get_logger().error(f"Error in ball detection ({camera_side}): {e}")
+            return None, 0
     
     def detect_aruco_markers(self, image: np.ndarray, camera_matrix: np.ndarray, dist_coeffs: np.ndarray) -> Dict:
         """Detect ArUco markers in image"""
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        self.get_logger().info("14")
         
         try:
             # Try new OpenCV API first
-            self.get_logger().info("18")
             detector = aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
-            self.get_logger().info("15")
             corners, ids, rejected = detector.detectMarkers(gray)
-            self.get_logger().info("16")
         except AttributeError:
-            self.get_logger().info("19")
-            if self.aruco_dict is None:
-                self.get_logger().info("Aruco dict none")
-            if self.aruco_params is None:
-                self.get_logger().info("Aruco params is none")
-            if gray is None:
-                self.get_logger().info("No gray today, the gray has gone away")
             
             # Fall back to old API
             corners, ids, rejected = aruco.detectMarkers(
                 gray, self.aruco_dict, parameters=self.aruco_params
             )
-            self.get_logger().info("17")
         
         detected_markers = {}
-        self.get_logger().info("20")
         
         if ids is not None:
             for i, marker_id in enumerate(ids.flatten()):
@@ -226,56 +275,6 @@ class CombinedTracker(Node):
         else:
             return f"Unknown_{marker_id}"
     
-    def detect_ball(self, image: np.ndarray, camera_side: str = 'left') -> Tuple[Optional[Tuple[float, float]], float]:
-        """Detect ball using HSV color filtering"""
-        try:
-            if camera_side == 'left':
-                hsv_min = self.hsv_min_left
-                hsv_max = self.hsv_max_left
-            else:
-                hsv_min = self.hsv_min_right
-                hsv_max = self.hsv_max_right
-            
-            hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv, hsv_min, hsv_max)
-            
-            # Clean up mask
-            kernel = np.ones((5,5), np.uint8)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=self.morph_iterations)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-            mask = cv2.medianBlur(mask, self.blur_kernel_size)
-            
-            # Find contours
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            
-            best_ball = None
-            best_circularity = 0
-            
-            if contours:
-                for contour in contours:
-                    area = cv2.contourArea(contour)
-                    if area > self.min_area:
-                        perimeter = cv2.arcLength(contour, True)
-                        if perimeter > 0:
-                            circularity = 4 * np.pi * area / (perimeter * perimeter)
-                            
-                            if circularity > self.circularity_threshold:
-                                (x, y), radius = cv2.minEnclosingCircle(contour)
-                                
-                                if radius > self.min_radius:
-                                    if circularity > best_circularity:
-                                        best_ball = ((float(x), float(y)), radius)
-                                        best_circularity = circularity
-            
-            if best_ball:
-                return best_ball[0], best_ball[1]
-            
-            return None, 0
-            
-        except Exception as e:
-            logger.error(f"Error in ball detection ({camera_side}): {e}")
-            return None, 0
-    
     def triangulate_point(self, pt_left: np.ndarray, pt_right: np.ndarray) -> np.ndarray:
         """Triangulate 3D point from stereo correspondence"""
         try:
@@ -283,7 +282,7 @@ class CombinedTracker(Node):
             points_3d = (points_4d / points_4d[3])[:3].T
             return points_3d[0]
         except Exception as e:
-            logger.error(f"Error in triangulation: {e}")
+            self.get_logger().error(f"Error in triangulation: {e}")
             return np.array([0, 0, 0])
     
     def transform_to_baseframe(self, camera_point: np.ndarray) -> Optional[np.ndarray]:
@@ -303,24 +302,19 @@ class CombinedTracker(Node):
             camera_point_mm = camera_point * 1000.0  # Convert m to mm
             
             # Apply camera offset correction
-            # The camera sees the base frame at tvec, but camera is offset from base frame center
             corrected_base_position = tvec.flatten() * 1000.0  # Convert to mm
             
             # Transform point to base frame coordinates
-            # 1. Translate by base frame position
-            # 2. Rotate by base frame orientation  
-            # 3. Apply camera offset correction
             relative_point = camera_point_mm - corrected_base_position
             transformed_point = R_base.T @ relative_point
             
             # Apply camera mounting offset
-            # Since camera is offset from base frame center, we need to add this offset
             final_point = transformed_point + self.camera_offset
             
             return final_point
             
         except Exception as e:
-            logger.error(f"Error transforming to base frame: {e}")
+            self.get_logger().error(f"Error transforming to base frame: {e}")
             return None
     
     def get_box_orientation_and_pose(self, detected_markers: Dict) -> Optional[Dict]:
@@ -352,7 +346,6 @@ class CombinedTracker(Node):
             world_pose = None
             if self.base_frame_pose is not None:
                 marker_pos = marker_info['tvec'].flatten()
-                # For box markers, we also need to apply the camera offset correction
                 corrected_pos = marker_pos * 1000.0  # Convert to mm
                 base_pos = self.base_frame_pose['tvec'].flatten() * 1000.0
                 R_base, _ = cv2.Rodrigues(self.base_frame_pose['rvec'])
@@ -375,34 +368,37 @@ class CombinedTracker(Node):
         # Getting images
         try:
             cv_img = self.bridge.imgmsg_to_cv2(img, "bgr8")
+            # Convert numpy arrays to lists for JSON serialization
+            def convert_numpy(obj):
+                if isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                elif isinstance(obj, dict):
+                    return {k: convert_numpy(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_numpy(v) for v in obj]
+                else:
+                    return obj
+            
         except Exception as e:
             self.get_logger().error('Failed to convert image: %s' % str(e))
             return
 
-        self.get_logger().info("1")
-
         # Storage for detected points
         pt = None
-        self.get_logger().info("2")
 
         # Detect ArUco markers in left camera (for base frame reference)
         markers = self.detect_aruco_markers(cv_img, mtx, dist)
-        self.get_logger().info("3")
 
         # Update base frame pose if detected
         if self.BASEFRAME_ID in markers:
             self.base_frame_pose = markers[self.BASEFRAME_ID]
-        self.get_logger().info("4")
 
         box_info = self.get_box_orientation_and_pose(markers)
-        self.get_logger().info("5")
 
         detection, radius = self.detect_ball(cv_img, side)
-        self.get_logger().info("6")
 
         if detection is not None:
             pt = detection
-        self.get_logger().info("7")
 
         ball_world_pos = None
         if pt is not None and other_pt is not None:
@@ -411,7 +407,6 @@ class CombinedTracker(Node):
                 np.array([pt]), 
                 np.array([other_pt])
             )
-            self.get_logger().info("9")
             
             # Transform to base frame coordinates
             ball_world_pos = self.transform_to_baseframe(xyz_camera)
@@ -464,6 +459,13 @@ class CombinedTracker(Node):
             cv2.putText(img, "BALL", 
                        (int(ball_pos[0]-20), int(ball_pos[1]-25)), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+        # Draw ball detections (same as fine_tune_hsv.py)
+        if ball_pos is not None:
+            cv2.circle(img, (int(ball_pos[0]), int(ball_pos[1])), 
+                     int(radius), (0, 255, 0), 3)
+            cv2.putText(img, "BALL", 
+                       (int(ball_pos[0]-20), int(ball_pos[1]-25)), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # Draw status info
         y_offset = 30
