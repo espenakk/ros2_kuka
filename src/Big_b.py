@@ -16,37 +16,37 @@ logger = logging.getLogger(__name__)
 
 class OptimizedCombinedTracker:
     def __init__(self, params_path: str = 'stereo_params.yml'):
-        # HARDCODED VALUES FROM CONFIG.TOML FOR MAXIMUM SPEED
         
-        # Ball detection HSV values - hardcoded from fine_tune_hsv.py
-        self.hsv_min_left = (23, 10, 50)     # Venstre kamera
-        self.hsv_max_left = (100, 255, 160)
-        self.hsv_min_right = (28, 10, 60)    # Høgre kamera (fine-tuned)
-        self.hsv_max_right = (97, 255, 150)
         
-        # Ball detection parameters
+        # HSV values 
+        self.hsv_min_left =  (26, 10, 45) 
+        self.hsv_max_left = (101, 255, 130)
+        self.hsv_min_right = (35, 5, 65)   
+        self.hsv_max_right = (106, 255, 105)
+        
+        # Ball parameter
         self.min_radius = 3.8
         self.min_area = 35
         self.circularity_threshold = 0.70
         
-        # Camera filter values - hardcoded from fine_tune_hsv.py
+        # Camera filter
         self.brightness = -10
         self.saturation = 2.4
         self.vibrance = 0.1
         self.sharpness = 0.9
 
-        # Camera settings - hardcoded
-        self.left_cam_index = 0
+        # Camera settings
+        self.left_cam_index = 4
         self.right_cam_index = 6
         self.cam_width = 800
         self.cam_height = 600
         self.cam_fps = 60
         
-        # Network settings - hardcoded
+        # Network settings 
         self.host = "127.0.0.1"
         self.port = 5555
         
-        # Debug settings - hardcoded
+        # Debug settings 
         self.show_fps = True
         self.log_detections = False
         
@@ -549,11 +549,6 @@ class OptimizedCombinedTracker:
             cv2.putText(img_left, f"BOX: {box_info['dominant_face']}", (10, y_offset), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
             y_offset += 25
-        
-        if self.last_ball_world_pos is not None:
-            pos_text = f"BALL: ({self.last_ball_world_pos[0]:.1f}, {self.last_ball_world_pos[1]:.1f}, {self.last_ball_world_pos[2]:.1f})"
-            cv2.putText(img_left, pos_text, (10, y_offset), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
         
         cv2.imshow('Left Camera', img_left)
         cv2.imshow('Right Camera', img_right)
